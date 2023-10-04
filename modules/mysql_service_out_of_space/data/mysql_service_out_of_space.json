@@ -1,0 +1,146 @@
+{
+  "name": "mysql_service_out_of_space",
+  "description": "This incident type refers to cases where the MySQL service, which is responsible for managing and storing data in a database, runs out of available space. This can happen due to a variety of reasons such as an unexpected increase in data volume or insufficient allocation of storage resources. When the MySQL service runs out of space, it can cause data loss, application errors, and even system crashes if not addressed promptly.",
+  "params": [
+    {
+      "name": "MYSQL_DATA_DIRECTORY",
+      "value": ""
+    },
+    {
+      "name": "DATABASE_USERNAME",
+      "value": ""
+    },
+    {
+      "name": "TABLE_NAME",
+      "value": ""
+    },
+    {
+      "name": "MYSQL_LOG_DIRECTORY",
+      "value": ""
+    },
+    {
+      "name": "DATABASE_NAME",
+      "value": ""
+    },
+    {
+      "name": "DATABASE_PASSWORD",
+      "value": ""
+    },
+    {
+      "name": "HOST_NAME",
+      "value": ""
+    },
+    {
+      "name": "K8S_CLUSTER_NAME",
+      "value": ""
+    },
+    {
+      "name": "NAMESPACE",
+      "value": ""
+    }
+  ],
+  "cells": [
+    {
+      "name": "cell_1",
+      "type": "MARKDOWN",
+      "enabled": true,
+      "content": "## MySQL Service Out of Space.\nThis incident type refers to cases where the MySQL service, which is responsible for managing and storing data in a database, runs out of available space. This can happen due to a variety of reasons such as an unexpected increase in data volume or insufficient allocation of storage resources. When the MySQL service runs out of space, it can cause data loss, application errors, and even system crashes if not addressed promptly."
+    },
+    {
+      "name": "cell_2",
+      "type": "MARKDOWN",
+      "enabled": true,
+      "content": "## Check available disk space"
+    },
+    {
+      "name": "cell_3",
+      "type": "OP_LANG",
+      "enabled": true,
+      "content": "(host | host_name=$HOST_NAME) union (pod | k8s_cluster_name=$K8S_CLUSTER_NAME | namespace=$NAMESPACE) | `df -h`"
+    },
+    {
+      "name": "cell_4",
+      "type": "MARKDOWN",
+      "enabled": true,
+      "content": "## Check the size of the MySQL data directory"
+    },
+    {
+      "name": "cell_5",
+      "type": "OP_LANG",
+      "enabled": true,
+      "content": "(host | host_name=$HOST_NAME) union (pod | k8s_cluster_name=$K8S_CLUSTER_NAME | namespace=$NAMESPACE) | `du -sh ${MYSQL_DATA_DIRECTORY}`"
+    },
+    {
+      "name": "cell_6",
+      "type": "MARKDOWN",
+      "enabled": true,
+      "content": "## Check the size of MySQL logs"
+    },
+    {
+      "name": "cell_7",
+      "type": "OP_LANG",
+      "enabled": true,
+      "content": "(host | host_name=$HOST_NAME) union (pod | k8s_cluster_name=$K8S_CLUSTER_NAME | namespace=$NAMESPACE) | `du -sh ${MYSQL_LOG_DIRECTORY}`"
+    },
+    {
+      "name": "cell_8",
+      "type": "MARKDOWN",
+      "enabled": true,
+      "content": "## Identify the largest tables in the MySQL database"
+    },
+    {
+      "name": "cell_9",
+      "type": "OP_LANG",
+      "enabled": true,
+      "content": "(host | host_name=$HOST_NAME) union (pod | k8s_cluster_name=$K8S_CLUSTER_NAME | namespace=$NAMESPACE) | `mysql -u ${DATABASE_USERNAME} -p -e \"SELECT table_schema as 'Database', table_name AS 'Table', ROUND(((data_length + index_length) / 1024 / 1024), 2) AS 'Size (MB)' FROM information_schema.TABLES ORDER BY (data_length + index_length) DESC;\"`"
+    },
+    {
+      "name": "cell_10",
+      "type": "MARKDOWN",
+      "enabled": true,
+      "content": "## Identify the largest databases in the MySQL instance"
+    },
+    {
+      "name": "cell_11",
+      "type": "OP_LANG",
+      "enabled": true,
+      "content": "(host | host_name=$HOST_NAME) union (pod | k8s_cluster_name=$K8S_CLUSTER_NAME | namespace=$NAMESPACE) | `mysql -u ${DATABASE_USERNAME} -p -e \"SELECT table_schema 'Database Name', SUM(data_length + index_length)/1024/1024 'Database Size (MB)' FROM information_schema.tables GROUP BY table_schema;\"`"
+    },
+    {
+      "name": "cell_12",
+      "type": "MARKDOWN",
+      "enabled": true,
+      "content": "## Check if any long-running queries are causing the issue"
+    },
+    {
+      "name": "cell_13",
+      "type": "OP_LANG",
+      "enabled": true,
+      "content": "(host | host_name=$HOST_NAME) union (pod | k8s_cluster_name=$K8S_CLUSTER_NAME | namespace=$NAMESPACE) | `mysql -u ${DATABASE_USERNAME} -p -e \"SHOW FULL PROCESSLIST;\"`"
+    },
+    {
+      "name": "cell_14",
+      "type": "MARKDOWN",
+      "enabled": true,
+      "content": "## The database is not being properly optimized, leading to inefficiencies and excessive use of storage space."
+    },
+    {
+      "name": "cell_15",
+      "type": "OP_LANG",
+      "enabled": true,
+      "content": "host | host_name=$HOST_NAME | invoke_database_health_check($DATABASE_USERNAME, $DATABASE_NAME, $DATABASE_PASSWORD)"
+    },
+    {
+      "name": "cell_16",
+      "type": "MARKDOWN",
+      "enabled": true,
+      "content": "## Optimize the database by removing duplicate or unused data, which will reduce storage requirements."
+    },
+    {
+      "name": "cell_17",
+      "type": "OP_LANG",
+      "enabled": true,
+      "content": "host | host_name=$HOST_NAME | invoke_remove_duplicates_and_optimize_table($DATABASE_USERNAME, $TABLE_NAME, $DATABASE_NAME, $DATABASE_PASSWORD)"
+    }
+  ]
+}
